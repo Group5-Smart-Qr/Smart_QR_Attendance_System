@@ -51,15 +51,6 @@ interface AttendanceContextValue {
   loadRecordsForStudent: (studentId: string) => Promise<void>;
 }
 
-// ── Default stats (used before records are loaded) ─────────
-const DEFAULT_STATS: AttendanceStats = {
-  present: 0,
-  late: 0,
-  absent: 0,
-  total: 0,
-  rate: '0%',
-};
-
 // ── Context creation ────────────────────────────────────────
 const AttendanceContext = createContext<AttendanceContextValue | null>(null);
 
