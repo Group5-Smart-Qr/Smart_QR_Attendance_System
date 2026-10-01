@@ -166,7 +166,7 @@ export default function LoginScreen() {
     setError('');
     // Navigate to dashboard (to be built next)
     router.replace({
-      pathname: '/(tabs)',
+      pathname: '/dashboard',
       params: { studentName, studentId, course, section },
     });
   }
