@@ -10,6 +10,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  Modal,
+  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -38,6 +40,7 @@ export default function DashboardScreen() {
   }>();
 
   const { stats, loadRecordsForStudent } = useAttendance();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   useEffect(() => {
     if (studentId) {
@@ -70,15 +73,13 @@ export default function DashboardScreen() {
   });
 
   // ── Logout Handler ───────────────────────────────────────
-  function handleLogout() {
-    Alert.alert('Log Out', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Log Out',
-        style: 'destructive',
-        onPress: () => router.replace('/'),
-      },
-    ]);
+  function handleLogoutPress() {
+    setShowLogoutModal(true);
+  }
+
+  function confirmLogout() {
+    setShowLogoutModal(false);
+    router.replace('/');
   }
 
   function handleScanPress() {
@@ -119,7 +120,7 @@ export default function DashboardScreen() {
 
             <TouchableOpacity
               style={styles.actionIconButton}
-              onPress={handleLogout}
+              onPress={handleLogoutPress}
               activeOpacity={0.7}
             >
               <Ionicons name="log-out-outline" size={20} color={Colors.darkGreen} />
@@ -226,6 +227,45 @@ export default function DashboardScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {/* ── Custom Logout Confirmation Modal ── */}
+      <Modal
+        visible={showLogoutModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLogoutModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalIconCircle}>
+              <Ionicons name="log-out" size={32} color={Colors.absent} />
+            </View>
+
+            <Text style={styles.modalTitle}>Log Out</Text>
+            <Text style={styles.modalSubtitle}>
+              Are you sure you want to end your session and return to the welcome screen?
+            </Text>
+
+            <View style={styles.modalButtonRow}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setShowLogoutModal(false)}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalConfirmBtn}
+                onPress={confirmLogout}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.modalConfirmText}>Log Out</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -438,5 +478,78 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     flex: 1,
     lineHeight: 18,
+  },
+
+  // Logout Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xl,
+  },
+  modalCard: {
+    backgroundColor: Colors.white,
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 340,
+    ...Shadow.card,
+  },
+  modalIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.absentBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  modalTitle: {
+    fontSize: FontSize.xl,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: Spacing.xs,
+  },
+  modalSubtitle: {
+    fontSize: FontSize.sm,
+    color: Colors.olive,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: Spacing.xl,
+  },
+  modalButtonRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    width: '100%',
+  },
+  modalCancelBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: Radius.pill,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.creamWhite,
+  },
+  modalCancelText: {
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+    color: Colors.olive,
+  },
+  modalConfirmBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.absent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalConfirmText: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+    color: Colors.white,
   },
 });
