@@ -9,8 +9,7 @@ dist/
 web-build/
 expo-env.d.ts
 
-# Native
-.kotlin/
+# Native builds
 *.orig.*
 *.jks
 *.p8
@@ -32,12 +31,18 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
 
 # typescript
 *.tsbuildinfo
 
-example
-
-# generated native folders
-/ios
-/android
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
