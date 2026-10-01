@@ -21,7 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { QRScanner } from '@/components/QRScanner';
 import { Colors, FontSize, Radius, Shadow, Spacing } from '@/constants/theme';
-import { addRecord, createRecord } from '@/services/attendance-storage';
+import { useAttendance } from '@/context/attendance-context';
 
 // ── Valid QR prefix ─────────────────────────────────────────
 // A valid attendance QR must start with this prefix
@@ -42,6 +42,7 @@ export default function ScannerScreen() {
     section?: string;
   }>();
 
+  const { addRecord } = useAttendance();
   const [scanning, setScanning] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
@@ -62,19 +63,15 @@ export default function ScannerScreen() {
       const subject = parts[1] ?? 'CS101';
       setScannedSubject(subject);
 
-      // Determine status: present if within 15 min of class start
-      // (simplified — always 'present' for now)
-      const record = createRecord({
-        studentName: String(studentName),
-        studentId: String(studentId),
-        course: String(course),
-        section: String(section),
-        status: 'present',
-        subject,
-      });
-
       try {
-        await addRecord(record);
+        await addRecord({
+          studentName: String(studentName),
+          studentId: String(studentId),
+          course: String(course),
+          section: String(section),
+          status: 'present',
+          subject,
+        });
       } catch {
         // non-blocking — show success anyway
       }
@@ -82,7 +79,7 @@ export default function ScannerScreen() {
       setErrorMsg('');
       setShowSuccess(true);
     },
-    [studentName, studentId, course, section]
+    [studentName, studentId, course, section, addRecord]
   );
 
   // ── Reset: allow another scan ────────────────────────────

@@ -22,6 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScanButton } from '@/components/ScanButton';
 import { StudentCard } from '@/components/StudentCard';
 import { Colors, FontSize, Radius, Shadow, Spacing } from '@/constants/theme';
+import { useAttendance } from '@/context/attendance-context';
 
 export default function DashboardScreen() {
   const {
@@ -35,6 +36,14 @@ export default function DashboardScreen() {
     course?: string;
     section?: string;
   }>();
+
+  const { stats, loadRecordsForStudent } = useAttendance();
+
+  useEffect(() => {
+    if (studentId) {
+      loadRecordsForStudent(studentId);
+    }
+  }, [studentId, loadRecordsForStudent]);
 
   // ── Live Date & Time State ──────────────────────────────
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -94,13 +103,28 @@ export default function DashboardScreen() {
             <Text style={styles.headerSubtitle}>Group 5 · CS101</Text>
           </View>
 
-          <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={handleLogout}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="log-out-outline" size={20} color={Colors.darkGreen} />
-          </TouchableOpacity>
+          <View style={styles.topBarActions}>
+            <TouchableOpacity
+              style={styles.actionIconButton}
+              onPress={() =>
+                router.push({
+                  pathname: '/history',
+                  params: { studentName, studentId },
+                })
+              }
+              activeOpacity={0.7}
+            >
+              <Ionicons name="time-outline" size={20} color={Colors.darkGreen} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionIconButton}
+              onPress={handleLogout}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="log-out-outline" size={20} color={Colors.darkGreen} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ── Live Date & Time Card ── */}
@@ -131,26 +155,37 @@ export default function DashboardScreen() {
         />
 
         {/* ── Quick Stats Summary ── */}
-        <View style={styles.sectionHeader}>
+        <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Attendance Overview</Text>
+          <TouchableOpacity
+            onPress={() =>
+              router.push({
+                pathname: '/history',
+                params: { studentName, studentId },
+              })
+            }
+            activeOpacity={0.7}
+          >
+            <Text style={styles.viewHistoryLink}>View History →</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.statsRow}>
           <View style={[styles.statBox, { borderColor: Colors.present }]}>
             <Ionicons name="checkmark-done-circle" size={24} color={Colors.present} />
-            <Text style={styles.statValue}>18</Text>
+            <Text style={styles.statValue}>{stats.present}</Text>
             <Text style={styles.statLabel}>Present</Text>
           </View>
 
           <View style={[styles.statBox, { borderColor: Colors.late }]}>
             <Ionicons name="alarm-outline" size={24} color={Colors.late} />
-            <Text style={styles.statValue}>2</Text>
+            <Text style={styles.statValue}>{stats.late}</Text>
             <Text style={styles.statLabel}>Late</Text>
           </View>
 
           <View style={[styles.statBox, { borderColor: Colors.olive }]}>
             <Ionicons name="pie-chart-outline" size={24} color={Colors.leafGreen} />
-            <Text style={styles.statValue}>90%</Text>
+            <Text style={styles.statValue}>{stats.rate}</Text>
             <Text style={styles.statLabel}>Rate</Text>
           </View>
         </View>
@@ -159,6 +194,29 @@ export default function DashboardScreen() {
         <View style={styles.scanSection}>
           <ScanButton onPress={handleScanPress} />
         </View>
+
+        {/* ── Attendance History Quick Card ── */}
+        <TouchableOpacity
+          style={styles.historyCardButton}
+          onPress={() =>
+            router.push({
+              pathname: '/history',
+              params: { studentName, studentId },
+            })
+          }
+          activeOpacity={0.8}
+        >
+          <View style={styles.historyIconCircle}>
+            <Ionicons name="receipt-outline" size={20} color={Colors.leafGreen} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.historyBtnTitle}>Attendance Logs</Text>
+            <Text style={styles.historyBtnSubtitle}>
+              Check recorded sessions and status
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Colors.olive} />
+        </TouchableOpacity>
 
         {/* ── Recent Activity / Notice ── */}
         <View style={styles.noticeCard}>
@@ -191,6 +249,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: Spacing.xs,
   },
+  topBarActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
   greeting: {
     fontSize: FontSize.xxl,
     fontWeight: '700',
@@ -201,6 +264,15 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     color: Colors.olive,
     fontWeight: '500',
+  },
+  actionIconButton: {
+    width: 42,
+    height: 42,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadow.card,
   },
   logoutButton: {
     width: 42,
@@ -270,10 +342,21 @@ const styles = StyleSheet.create({
   sectionHeader: {
     marginTop: Spacing.xs,
   },
+  sectionHeaderRow: {
+    marginTop: Spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   sectionTitle: {
     fontSize: FontSize.md,
     fontWeight: '700',
     color: Colors.textPrimary,
+  },
+  viewHistoryLink: {
+    fontSize: FontSize.xs,
+    fontWeight: '600',
+    color: Colors.leafGreen,
   },
 
   // Stats
@@ -305,6 +388,38 @@ const styles = StyleSheet.create({
   // Scan Section
   scanSection: {
     marginTop: Spacing.xs,
+  },
+
+  // History Card Button
+  historyCardButton: {
+    backgroundColor: Colors.white,
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadow.card,
+  },
+  historyIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.lightGreen,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  historyBtnTitle: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  historyBtnSubtitle: {
+    fontSize: FontSize.xs,
+    color: Colors.olive,
+    marginTop: 2,
   },
 
   // Notice
