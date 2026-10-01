@@ -161,14 +161,6 @@ export default function WelcomeScreen() {
             <Ionicons name="scan-outline" size={20} color={Colors.white} />
             <Text style={styles.btnPrimaryText}>Get Started</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.btnSecondary}
-            activeOpacity={0.75}
-          >
-            <Ionicons name="time-outline" size={20} color={Colors.darkGreen} />
-            <Text style={styles.btnSecondaryText}>View History</Text>
-          </TouchableOpacity>
         </View>
       </Animated.View>
     </SafeAreaView>

@@ -54,6 +54,7 @@ export const Radius = {
 } as const;
 
 export const Spacing = {
+  // New named keys (use these in new screens)
   xs: 4,
   sm: 8,
   md: 12,
@@ -61,7 +62,47 @@ export const Spacing = {
   xl: 24,
   xxl: 32,
   xxxl: 48,
+  // Legacy keys (used by existing template components — do not remove)
+  half: 2,
+  one: 4,
+  two: 8,
+  three: 16,
+  four: 24,
+  five: 32,
+  six: 64,
 } as const;
+
+// ── Backwards-compatible exports (used by existing template components) ──────
+import { Platform } from 'react-native';
+
+export const Fonts = Platform.select({
+  ios: { sans: 'system-ui', serif: 'ui-serif', rounded: 'ui-rounded', mono: 'ui-monospace' },
+  default: { sans: 'normal', serif: 'serif', rounded: 'normal', mono: 'monospace' },
+  web: { sans: 'system-ui', serif: 'serif', rounded: 'normal', mono: 'monospace' },
+})!;
+
+// Legacy light/dark Colors used by ThemedView, app-tabs.web, etc.
+export const LegacyColors = {
+  light: {
+    text: Colors.textPrimary,
+    background: Colors.beige,
+    backgroundElement: Colors.lightGreen,
+    backgroundSelected: '#C8E6C9',
+    textSecondary: Colors.olive,
+  },
+  dark: {
+    text: '#ffffff',
+    background: '#1B2E22',
+    backgroundElement: '#2A4232',
+    backgroundSelected: '#3A5A42',
+    textSecondary: '#A8C09A',
+  },
+} as const;
+
+export type ThemeColor = keyof typeof LegacyColors.light & keyof typeof LegacyColors.dark;
+
+export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
+export const MaxContentWidth = 800;
 
 export const Shadow = {
   card: {
