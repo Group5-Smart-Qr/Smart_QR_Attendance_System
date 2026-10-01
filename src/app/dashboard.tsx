@@ -73,11 +73,10 @@ export default function DashboardScreen() {
   }
 
   function handleScanPress() {
-    Alert.alert(
-      'QR Scanner',
-      'The camera scanner screen will open here in the next step!',
-      [{ text: 'OK' }]
-    );
+    router.push({
+      pathname: '/scanner',
+      params: { studentName, studentId, course, section },
+    });
   }
 
   return (
