@@ -22,6 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScanButton } from '@/components/ScanButton';
 import { StudentCard } from '@/components/StudentCard';
 import { Colors, FontSize, Radius, Shadow, Spacing } from '@/constants/theme';
+import { computeStats, getRecordsByStudentId } from '@/services/attendance-storage';
 
 export default function DashboardScreen() {
   const {
@@ -72,38 +73,34 @@ export default function DashboardScreen() {
     ]);
   }
 
+  // ── Stats State ──────────────────────────────────────────
+  const [stats, setStats] = useState<{ present: number; late: number; rate: string }>({
+    present: 18,
+    late: 2,
+    rate: '90%',
+  });
+
+  useEffect(() => {
+    loadAttendanceStats();
+  }, []);
+
+  async function loadAttendanceStats() {
+    try {
+      const records = await getRecordsByStudentId(studentId);
+      if (records.length > 0) {
+        const computed = computeStats(records);
+        setStats({ present: computed.present, late: computed.late, rate: computed.rate });
+      }
+    } catch {
+      // fallback to default stats if empty
+    }
+  }
+
   function handleScanPress() {
-    Alert.alert(
-      'Simulate QR Scan',
-      'Select a status to test the Attendance Result screen:',
-      [
-        {
-          text: 'Present ✅',
-          onPress: () =>
-            router.push({
-              pathname: '/attendance-result',
-              params: { studentName, studentId, course, section, status: 'present' },
-            }),
-        },
-        {
-          text: 'Absent ❌',
-          onPress: () =>
-            router.push({
-              pathname: '/attendance-result',
-              params: { studentName, studentId, course, section, status: 'absent' },
-            }),
-        },
-        {
-          text: 'Invalid ⚠️',
-          onPress: () =>
-            router.push({
-              pathname: '/attendance-result',
-              params: { studentName, studentId, course, section, status: 'invalid' },
-            }),
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+    router.push({
+      pathname: '/scanner',
+      params: { studentName, studentId, course, section },
+    });
   }
 
   return (
@@ -165,19 +162,19 @@ export default function DashboardScreen() {
         <View style={styles.statsRow}>
           <View style={[styles.statBox, { borderColor: Colors.present }]}>
             <Ionicons name="checkmark-done-circle" size={24} color={Colors.present} />
-            <Text style={styles.statValue}>18</Text>
+            <Text style={styles.statValue}>{stats.present}</Text>
             <Text style={styles.statLabel}>Present</Text>
           </View>
 
           <View style={[styles.statBox, { borderColor: Colors.late }]}>
             <Ionicons name="alarm-outline" size={24} color={Colors.late} />
-            <Text style={styles.statValue}>2</Text>
+            <Text style={styles.statValue}>{stats.late}</Text>
             <Text style={styles.statLabel}>Late</Text>
           </View>
 
           <View style={[styles.statBox, { borderColor: Colors.olive }]}>
             <Ionicons name="pie-chart-outline" size={24} color={Colors.leafGreen} />
-            <Text style={styles.statValue}>90%</Text>
+            <Text style={styles.statValue}>{stats.rate}</Text>
             <Text style={styles.statLabel}>Rate</Text>
           </View>
         </View>
