@@ -8,11 +8,8 @@ export default function RootLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="login" />
-<<<<<<< Updated upstream
-=======
       <Stack.Screen name="dashboard" />
       <Stack.Screen name="attendance-result" />
->>>>>>> Stashed changes
     </Stack>
   );
 }
