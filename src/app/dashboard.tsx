@@ -83,9 +83,35 @@ export default function DashboardScreen() {
 
   function handleScanPress() {
     Alert.alert(
-      'QR Scanner',
-      'The camera scanner screen will open here in the next step!',
-      [{ text: 'OK' }]
+      'Simulate QR Scan',
+      'Select a status to test the Attendance Result screen:',
+      [
+        {
+          text: 'Present ✅',
+          onPress: () =>
+            router.push({
+              pathname: '/attendance-result',
+              params: { studentName, studentId, course, section, status: 'present' },
+            }),
+        },
+        {
+          text: 'Absent ❌',
+          onPress: () =>
+            router.push({
+              pathname: '/attendance-result',
+              params: { studentName, studentId, course, section, status: 'absent' },
+            }),
+        },
+        {
+          text: 'Invalid ⚠️',
+          onPress: () =>
+            router.push({
+              pathname: '/attendance-result',
+              params: { studentName, studentId, course, section, status: 'invalid' },
+            }),
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
     );
   }
 
