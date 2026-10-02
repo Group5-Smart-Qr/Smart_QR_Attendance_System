@@ -1,6 +1,8 @@
 // ============================================================
 // GROUP 5 – Smart QR Attendance System
+// Role: BALDO — QR Scanner Developer
 // Component: ScanButton.tsx
+// Features: Action button to trigger QR scanning
 // Props: onPress, title, subtitle, disabled
 // Design: Leaf Green (#4A7C59) + Warm Beige (#F5F0E8)
 // ============================================================

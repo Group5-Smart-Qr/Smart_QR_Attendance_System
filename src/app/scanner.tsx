@@ -1,5 +1,6 @@
 // ============================================================
 // GROUP 5 – Smart QR Attendance System
+// Role: BALDO — QR Scanner Developer
 // Screen: ScannerScreen (scanner.tsx)
 // Features: Camera viewfinder, Universal QR format parser (accepts any
 //           online or generated QR format), duplicate scan prevention,
