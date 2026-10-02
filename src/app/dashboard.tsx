@@ -179,7 +179,7 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* ── Live Date & Time Card ── */}
+        {/* ── Date & Time Card ── */}
         <View style={styles.clockCard}>
           <View style={styles.clockIconCircle}>
             <Ionicons name="time" size={22} color={Colors.white} />
@@ -187,10 +187,6 @@ export default function DashboardScreen() {
           <View style={styles.clockTextContainer}>
             <Text style={styles.liveTimeText}>{formattedTime}</Text>
             <Text style={styles.liveDateText}>{formattedDate}</Text>
-          </View>
-          <View style={styles.livePill}>
-            <View style={styles.pulsingDot} />
-            <Text style={styles.livePillText}>LIVE</Text>
           </View>
         </View>
 
