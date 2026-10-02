@@ -2,7 +2,8 @@
 // GROUP 5 – Smart QR Attendance System
 // Screen: DashboardScreen (dashboard.tsx)
 // Design: Leaf Green (#4A7C59) + Warm Beige (#F5F0E8)
-// Features: Live Clock, StudentCard, ScanButton, Stats Overview
+// Features: Live Clock, StudentCard (with Edit Profile),
+//           ScanButton, Stats Overview, Logout Modal
 // ============================================================
 
 import { Ionicons } from '@expo/vector-icons';
@@ -10,10 +11,13 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  Modal,
+  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -24,19 +28,46 @@ import { StudentCard } from '@/components/StudentCard';
 import { Colors, FontSize, Radius, Shadow, Spacing } from '@/constants/theme';
 import { useAttendance } from '@/context/attendance-context';
 
+const COURSES = [
+  'BS Information Technology',
+  'BS Computer Science',
+  'BS Information Systems',
+  'BS Computer Engineering',
+];
+
+const SECTIONS = ['IT-3A', 'IT-3B', 'CS-3A', 'CS-3B'];
+
 export default function DashboardScreen() {
-  const {
-    studentName = 'Juan Dela Cruz',
-    studentId = '2024-00123',
-    course = 'BS Information Technology',
-    section = 'IT-3A',
-  } = useLocalSearchParams<{
+  const params = useLocalSearchParams<{
     studentName?: string;
     studentId?: string;
     course?: string;
     section?: string;
   }>();
 
+  const studentId = params.studentId || '2024305392';
+
+  // ── Profile State (Editable) ────────────────────────────
+  const [currentName, setCurrentName] = useState(
+    params.studentName || 'Joebelle Dumapias'
+  );
+  const [currentCourse, setCurrentCourse] = useState(
+    params.course || COURSES[0]
+  );
+  const [currentSection, setCurrentSection] = useState(
+    params.section || SECTIONS[0]
+  );
+
+  // ── Edit Profile Modal State ────────────────────────────
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editName, setEditName] = useState(currentName);
+  const [editCourse, setEditCourse] = useState(currentCourse);
+  const [editSection, setEditSection] = useState(currentSection);
+
+  // ── Logout Modal State ──────────────────────────────────
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  // ── Attendance Context ──────────────────────────────────
   const { stats, loadRecordsForStudent } = useAttendance();
 
   useEffect(() => {
@@ -69,50 +100,44 @@ export default function DashboardScreen() {
     year: 'numeric',
   });
 
-  // ── Logout Handler ───────────────────────────────────────
-  function handleLogout() {
-    Alert.alert('Log Out', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Log Out',
-        style: 'destructive',
-        onPress: () => router.replace('/'),
-      },
-    ]);
+  // ── Handlers ─────────────────────────────────────────────
+  function handleOpenEditProfile() {
+    setEditName(currentName);
+    setEditCourse(currentCourse);
+    setEditSection(currentSection);
+    setShowEditModal(true);
+  }
+
+  function handleSaveProfile() {
+    if (!editName.trim()) {
+      Alert.alert('Validation', 'Please enter a valid student name.');
+      return;
+    }
+    setCurrentName(editName.trim());
+    setCurrentCourse(editCourse);
+    setCurrentSection(editSection);
+    setShowEditModal(false);
+  }
+
+  function handleLogoutPress() {
+    setShowLogoutModal(true);
+  }
+
+  function confirmLogout() {
+    setShowLogoutModal(false);
+    router.replace('/');
   }
 
   function handleScanPress() {
-    Alert.alert(
-      'Simulate QR Scan',
-      'Select a status to test the Attendance Result screen:',
-      [
-        {
-          text: 'Present ✅',
-          onPress: () =>
-            router.push({
-              pathname: '/attendance-result',
-              params: { studentName, studentId, course, section, status: 'present' },
-            }),
-        },
-        {
-          text: 'Absent ❌',
-          onPress: () =>
-            router.push({
-              pathname: '/attendance-result',
-              params: { studentName, studentId, course, section, status: 'absent' },
-            }),
-        },
-        {
-          text: 'Invalid ⚠️',
-          onPress: () =>
-            router.push({
-              pathname: '/attendance-result',
-              params: { studentName, studentId, course, section, status: 'invalid' },
-            }),
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+    router.push({
+      pathname: '/scanner',
+      params: {
+        studentName: currentName,
+        studentId,
+        course: currentCourse,
+        section: currentSection,
+      },
+    });
   }
 
   return (
@@ -136,7 +161,7 @@ export default function DashboardScreen() {
               onPress={() =>
                 router.push({
                   pathname: '/history',
-                  params: { studentName, studentId },
+                  params: { studentName: currentName, studentId },
                 })
               }
               activeOpacity={0.7}
@@ -146,7 +171,7 @@ export default function DashboardScreen() {
 
             <TouchableOpacity
               style={styles.actionIconButton}
-              onPress={handleLogout}
+              onPress={handleLogoutPress}
               activeOpacity={0.7}
             >
               <Ionicons name="log-out-outline" size={20} color={Colors.darkGreen} />
@@ -169,16 +194,25 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* ── Student Information Card ── */}
-        <View style={styles.sectionHeader}>
+        {/* ── Student Information Card (With Edit Button) ── */}
+        <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Student Profile</Text>
+          <TouchableOpacity
+            onPress={handleOpenEditProfile}
+            style={styles.editProfileChip}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="pencil" size={12} color={Colors.leafGreen} />
+            <Text style={styles.editProfileChipText}>Edit Profile</Text>
+          </TouchableOpacity>
         </View>
 
         <StudentCard
-          studentName={studentName}
+          studentName={currentName}
           studentId={studentId}
-          course={course}
-          section={section}
+          course={currentCourse}
+          section={currentSection}
+          onEdit={handleOpenEditProfile}
         />
 
         {/* ── Quick Stats Summary ── */}
@@ -188,7 +222,7 @@ export default function DashboardScreen() {
             onPress={() =>
               router.push({
                 pathname: '/history',
-                params: { studentName, studentId },
+                params: { studentName: currentName, studentId },
               })
             }
             activeOpacity={0.7}
@@ -228,7 +262,7 @@ export default function DashboardScreen() {
           onPress={() =>
             router.push({
               pathname: '/history',
-              params: { studentName, studentId },
+              params: { studentName: currentName, studentId },
             })
           }
           activeOpacity={0.8}
@@ -253,6 +287,153 @@ export default function DashboardScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {/* ── Edit Profile Modal ── */}
+      <Modal
+        visible={showEditModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.editModalHeader}>
+              <View style={styles.editAvatarMini}>
+                <Ionicons name="person" size={20} color={Colors.white} />
+              </View>
+              <Text style={styles.modalTitle}>Edit Student Profile</Text>
+            </View>
+
+            <Text style={styles.modalIdHint}>Student ID: {studentId}</Text>
+
+            {/* Full Name Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Full Name</Text>
+              <TextInput
+                style={styles.textInput}
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Enter your full name"
+                placeholderTextColor={Colors.textMuted}
+              />
+            </View>
+
+            {/* Course Selector */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Course</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.chipRow}>
+                  {COURSES.map((c) => (
+                    <TouchableOpacity
+                      key={c}
+                      style={[
+                        styles.modalChip,
+                        editCourse === c && styles.modalChipSelected,
+                      ]}
+                      onPress={() => setEditCourse(c)}
+                      activeOpacity={0.8}
+                    >
+                      <Text
+                        style={[
+                          styles.modalChipText,
+                          editCourse === c && styles.modalChipTextSelected,
+                        ]}
+                      >
+                        {c}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+
+            {/* Section Selector */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Section</Text>
+              <View style={styles.chipRow}>
+                {SECTIONS.map((s) => (
+                  <TouchableOpacity
+                    key={s}
+                    style={[
+                      styles.modalChip,
+                      editSection === s && styles.modalChipSelected,
+                    ]}
+                    onPress={() => setEditSection(s)}
+                    activeOpacity={0.8}
+                  >
+                    <Text
+                      style={[
+                        styles.modalChipText,
+                        editSection === s && styles.modalChipTextSelected,
+                      ]}
+                    >
+                      {s}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.modalButtonRow}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setShowEditModal(false)}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalSaveBtn}
+                onPress={handleSaveProfile}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.modalSaveText}>Save Changes</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Custom Logout Confirmation Modal ── */}
+      <Modal
+        visible={showLogoutModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLogoutModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalIconCircle}>
+              <Ionicons name="log-out" size={32} color={Colors.absent} />
+            </View>
+
+            <Text style={styles.modalTitle}>Log Out</Text>
+            <Text style={styles.modalSubtitle}>
+              Are you sure you want to end your session and return to the welcome screen?
+            </Text>
+
+            <View style={styles.modalButtonRow}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setShowLogoutModal(false)}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalConfirmBtn}
+                onPress={confirmLogout}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.modalConfirmText}>Log Out</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -293,15 +474,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   actionIconButton: {
-    width: 42,
-    height: 42,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadow.card,
-  },
-  logoutButton: {
     width: 42,
     height: 42,
     borderRadius: Radius.pill,
@@ -366,9 +538,6 @@ const styles = StyleSheet.create({
   },
 
   // Section Header
-  sectionHeader: {
-    marginTop: Spacing.xs,
-  },
   sectionHeaderRow: {
     marginTop: Spacing.xs,
     flexDirection: 'row',
@@ -383,6 +552,20 @@ const styles = StyleSheet.create({
   viewHistoryLink: {
     fontSize: FontSize.xs,
     fontWeight: '600',
+    color: Colors.leafGreen,
+  },
+  editProfileChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.lightGreen,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: Radius.pill,
+  },
+  editProfileChipText: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
     color: Colors.leafGreen,
   },
 
@@ -465,5 +648,159 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     flex: 1,
     lineHeight: 18,
+  },
+
+  // Modals Common Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xl,
+  },
+  modalCard: {
+    backgroundColor: Colors.white,
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 360,
+    ...Shadow.card,
+  },
+  modalTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  modalSubtitle: {
+    fontSize: FontSize.sm,
+    color: Colors.olive,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: Spacing.xl,
+    marginTop: Spacing.xs,
+  },
+  modalIdHint: {
+    fontSize: FontSize.xs,
+    color: Colors.olive,
+    fontWeight: '600',
+    marginBottom: Spacing.md,
+  },
+  editModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: 4,
+  },
+  editAvatarMini: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.leafGreen,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inputGroup: {
+    width: '100%',
+    marginBottom: Spacing.md,
+    gap: 4,
+  },
+  inputLabel: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginLeft: 2,
+  },
+  textInput: {
+    backgroundColor: Colors.creamWhite,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    height: 48,
+    fontSize: FontSize.md,
+    color: Colors.textPrimary,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    paddingVertical: 4,
+  },
+  modalChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    borderRadius: Radius.pill,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    backgroundColor: Colors.creamWhite,
+  },
+  modalChipSelected: {
+    backgroundColor: Colors.leafGreen,
+    borderColor: Colors.leafGreen,
+  },
+  modalChipText: {
+    fontSize: FontSize.xs,
+    fontWeight: '600',
+    color: Colors.olive,
+  },
+  modalChipTextSelected: {
+    color: Colors.white,
+  },
+  modalButtonRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    width: '100%',
+    marginTop: Spacing.md,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: Radius.pill,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.creamWhite,
+  },
+  modalCancelText: {
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+    color: Colors.olive,
+  },
+  modalSaveBtn: {
+    flex: 1.2,
+    height: 48,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.leafGreen,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadow.button,
+  },
+  modalSaveText: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+    color: Colors.white,
+  },
+  modalIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.absentBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  modalConfirmBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.absent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalConfirmText: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+    color: Colors.white,
   },
 });

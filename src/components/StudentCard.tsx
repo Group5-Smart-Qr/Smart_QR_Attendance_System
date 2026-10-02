@@ -1,13 +1,13 @@
 // ============================================================
 // GROUP 5 – Smart QR Attendance System
 // Component: StudentCard.tsx
-// Props: studentName, studentId, course, section
+// Props: studentName, studentId, course, section, onEdit
 // Design: Leaf Green (#4A7C59) + Warm Beige (#F5F0E8)
 // ============================================================
 
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { Colors, FontSize, Radius, Shadow, Spacing } from '@/constants/theme';
 
@@ -16,6 +16,7 @@ export interface StudentCardProps {
   studentId?: string;
   course?: string;
   section?: string;
+  onEdit?: () => void;
 }
 
 export function StudentCard({
@@ -23,9 +24,10 @@ export function StudentCard({
   studentId = '2024-00123',
   course = 'BS Information Technology',
   section = 'IT-3A',
+  onEdit,
 }: StudentCardProps) {
   // Extract initials for the avatar
-  const initials = studentName
+  const initials = (studentName || 'ST')
     .split(' ')
     .filter(Boolean)
     .slice(0, 2)
@@ -34,16 +36,28 @@ export function StudentCard({
 
   return (
     <View style={styles.card}>
-      {/* Top section: Avatar + Name + Status */}
+      {/* Top section: Avatar + Name + Status / Edit */}
       <View style={styles.headerRow}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{initials || 'ST'}</Text>
         </View>
 
         <View style={styles.nameContainer}>
-          <Text style={styles.studentName} numberOfLines={1}>
-            {studentName}
-          </Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.studentName} numberOfLines={1}>
+              {studentName}
+            </Text>
+            {onEdit && (
+              <TouchableOpacity
+                style={styles.editIconButton}
+                onPress={onEdit}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="pencil" size={14} color={Colors.leafGreen} />
+              </TouchableOpacity>
+            )}
+          </View>
           <View style={styles.idRow}>
             <Ionicons name="id-card-outline" size={14} color={Colors.olive} />
             <Text style={styles.studentId}>{studentId}</Text>
@@ -109,10 +123,24 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   studentName: {
     fontSize: FontSize.lg,
     fontWeight: '700',
     color: Colors.textPrimary,
+    flexShrink: 1,
+  },
+  editIconButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.lightGreen,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   idRow: {
     flexDirection: 'row',
