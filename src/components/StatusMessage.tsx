@@ -10,7 +10,7 @@ import { Animated, StyleSheet, Text, View } from 'react-native';
 
 import { Colors, FontSize, Radius, Spacing } from '@/constants/theme';
 
-export type AttendanceStatus = 'present' | 'absent' | 'invalid';
+export type AttendanceStatus = 'present' | 'late' | 'absent' | 'invalid';
 
 const STATUS_CONFIG: Record<
   AttendanceStatus,
@@ -22,6 +22,13 @@ const STATUS_CONFIG: Record<
     bg: Colors.presentBg,
     label: 'Attendance Marked!',
     sub: 'Your attendance has been recorded successfully.',
+  },
+  late: {
+    icon: 'time',
+    color: Colors.late,
+    bg: Colors.lateBg,
+    label: 'Marked as Late',
+    sub: 'Your attendance was recorded after session start.',
   },
   absent: {
     icon: 'close-circle',

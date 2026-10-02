@@ -13,18 +13,21 @@ import { AttendanceStatus } from '@/components/StatusMessage';
 
 const STATUS_BORDER: Record<AttendanceStatus, string> = {
   present: Colors.present,
+  late: Colors.late,
   absent: Colors.absent,
   invalid: Colors.textMuted,
 };
 
 const STATUS_LABEL: Record<AttendanceStatus, string> = {
   present: 'Present',
+  late: 'Late',
   absent: 'Absent',
   invalid: 'Invalid',
 };
 
 const STATUS_BG: Record<AttendanceStatus, string> = {
   present: Colors.presentBg,
+  late: Colors.lateBg,
   absent: Colors.absentBg,
   invalid: Colors.beige,
 };
@@ -37,6 +40,7 @@ type Props = {
   status: AttendanceStatus;
   timestamp: string;  // e.g. "10:45 AM"
   date: string;       // e.g. "October 1, 2026"
+  subject?: string;   // e.g. "CS101"
 };
 
 export function AttendanceCard({
@@ -47,6 +51,7 @@ export function AttendanceCard({
   status,
   timestamp,
   date,
+  subject,
 }: Props) {
   const borderColor = STATUS_BORDER[status] || Colors.textMuted;
   const statusLabel = STATUS_LABEL[status] || 'Invalid';
@@ -72,7 +77,11 @@ export function AttendanceCard({
       {/* Divider */}
       <View style={styles.divider} />
 
-      {/* Course & Section */}
+      {/* Subject, Course & Section */}
+      <View style={styles.row}>
+        <Ionicons name="book-outline" size={16} color={Colors.leafGreen} />
+        <Text style={styles.subjectText}>{subject || 'CS101'}</Text>
+      </View>
       <View style={styles.row}>
         <Ionicons name="school-outline" size={16} color={Colors.olive} />
         <Text style={styles.metaText}>{course}</Text>
@@ -161,6 +170,11 @@ const styles = StyleSheet.create({
   metaText: {
     fontSize: FontSize.sm,
     color: Colors.olive,
+  },
+  subjectText: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.leafGreen,
   },
   timeText: {
     fontSize: FontSize.lg,

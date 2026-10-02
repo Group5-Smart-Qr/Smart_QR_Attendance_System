@@ -20,6 +20,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AttendanceCard } from '@/components/AttendanceCard';
+import { StatusMessage } from '@/components/StatusMessage';
 import { Colors, FontSize, Radius, Shadow, Spacing } from '@/constants/theme';
 import { useAttendance } from '@/context/attendance-context';
 import { AttendanceRecord, AttendanceStatus } from '@/types/attendance';
@@ -83,68 +85,18 @@ export default function HistoryScreen() {
     });
   }
 
-  // Helper for status badge styling
-  function getStatusStyle(status: AttendanceStatus) {
-    switch (status) {
-      case 'present':
-        return {
-          bg: Colors.presentBg,
-          text: Colors.present,
-          icon: 'checkmark-circle' as const,
-        };
-      case 'late':
-        return {
-          bg: Colors.lateBg,
-          text: Colors.late,
-          icon: 'time' as const,
-        };
-      case 'absent':
-        return {
-          bg: Colors.absentBg,
-          text: Colors.absent,
-          icon: 'close-circle' as const,
-        };
-    }
-  }
-
   const renderItem = ({ item }: { item: AttendanceRecord }) => {
-    const statusCfg = getStatusStyle(item.status);
-
     return (
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={styles.subjectContainer}>
-            <View style={styles.subjectIconCircle}>
-              <Ionicons name="book-outline" size={16} color={Colors.leafGreen} />
-            </View>
-            <View>
-              <Text style={styles.subjectTitle}>{item.subject || 'CS101'}</Text>
-              <Text style={styles.sectionText}>Section {item.section}</Text>
-            </View>
-          </View>
-
-          <View style={[styles.statusBadge, { backgroundColor: statusCfg.bg }]}>
-            <Ionicons name={statusCfg.icon} size={14} color={statusCfg.text} />
-            <Text style={[styles.statusText, { color: statusCfg.text }]}>
-              {item.status.toUpperCase()}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.cardDivider} />
-
-        <View style={styles.cardFooter}>
-          <View style={styles.metaRow}>
-            <Ionicons name="calendar-outline" size={14} color={Colors.olive} />
-            <Text style={styles.metaText}>{item.date}</Text>
-          </View>
-
-          <View style={styles.metaRow}>
-            <Ionicons name="time-outline" size={14} color={Colors.olive} />
-            <Text style={styles.metaText}>{item.time}</Text>
-          </View>
-        </View>
-      </View>
+      <AttendanceCard
+        studentName={item.studentName}
+        studentId={item.studentId}
+        course={item.course}
+        section={item.section}
+        subject={item.subject || 'CS101'}
+        status={item.status as any}
+        timestamp={item.time}
+        date={item.date}
+      />
     );
   };
 
@@ -215,9 +167,13 @@ export default function HistoryScreen() {
       {/* ── Records List or Empty State ── */}
       {filteredRecords.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <View style={styles.emptyIconCircle}>
-            <Ionicons name="calendar-outline" size={48} color={Colors.olive} />
-          </View>
+          {activeFilter !== 'all' ? (
+            <StatusMessage status={activeFilter} />
+          ) : (
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="calendar-outline" size={48} color={Colors.olive} />
+            </View>
+          )}
           <Text style={styles.emptyTitle}>No Records Found</Text>
           <Text style={styles.emptySubtitle}>
             {activeFilter === 'all'
