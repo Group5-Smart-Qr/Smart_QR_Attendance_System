@@ -25,7 +25,7 @@ import { Colors, FontSize, Radius, Shadow, Spacing } from '@/constants/theme';
 // ── Business Validation Logic ───────────────────────────────
 function validateStatus(raw: string | string[] | undefined): AttendanceStatus {
   const value = Array.isArray(raw) ? raw[0] : raw;
-  if (value === 'present' || value === 'absent' || value === 'invalid') {
+  if (value === 'present' || value === 'late' || value === 'absent' || value === 'invalid') {
     return value;
   }
   return 'invalid'; // Default: unrecognised QR = invalid
@@ -50,6 +50,7 @@ function formatDate(date: Date): string {
 // ── Background tint per status ─────────────────────────────
 const STATUS_BG: Record<AttendanceStatus, string> = {
   present: '#F0FAF3',
+  late: '#FFFBEB',
   absent: '#FFF5F5',
   invalid: Colors.beige,
 };
@@ -61,7 +62,11 @@ export default function AttendanceResultScreen() {
     studentId?: string;
     course?: string;
     section?: string;
+    subject?: string;
     status?: string;
+    time?: string;
+    timestamp?: string;
+    date?: string;
   }>();
 
   // Validate the status from params
@@ -69,8 +74,11 @@ export default function AttendanceResultScreen() {
 
   // Capture the timestamp at mount (moment of scan result)
   const scannedAt = useMemo(() => new Date(), []);
-  const timestamp = formatTime(scannedAt);
-  const date = formatDate(scannedAt);
+  const defaultTime = formatTime(scannedAt);
+  const defaultDate = formatDate(scannedAt);
+
+  const timestamp = params.timestamp || params.time || defaultTime;
+  const date = params.date || defaultDate;
 
   const bgColor = STATUS_BG[status];
 
@@ -97,12 +105,13 @@ export default function AttendanceResultScreen() {
         {/* Status Message — animated icon + text */}
         <StatusMessage status={status} />
 
-        {/* Attendance Card — student info + time */}
+        {/* Attendance Card — student info + subject + time + date */}
         <AttendanceCard
           studentName={params.studentName || 'Juan Dela Cruz'}
           studentId={params.studentId || '2024-00123'}
           course={params.course || 'BS Information Technology'}
           section={params.section || 'IT-3A'}
+          subject={params.subject || 'CS101'}
           status={status}
           timestamp={timestamp}
           date={date}
