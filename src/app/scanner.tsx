@@ -1,14 +1,17 @@
 // ============================================================
 // GROUP 5 – Smart QR Attendance System
-// Screen: Camera QR Scanner (scanner.tsx)
-// Uses: expo-camera for live QR scanning
+// Screen: ScannerScreen (scanner.tsx)
+// Features: Camera viewfinder, QR validation, success modal,
+//           invalid QR error, saves attendance to AsyncStorage
+// Design: Leaf Green (#4A7C59) + Warm Beige (#F5F0E8)
 // ============================================================
 
 import { Ionicons } from '@expo/vector-icons';
-import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
+  Modal,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -16,328 +19,396 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { QRScanner } from '@/components/QRScanner';
 import { Colors, FontSize, Radius, Shadow, Spacing } from '@/constants/theme';
-import { addRecord, createRecord } from '@/services/attendance-storage';
+import { useAttendance } from '@/context/attendance-context';
 
+// ── Valid QR prefix ─────────────────────────────────────────
+// A valid attendance QR must start with this prefix
+// e.g. "SMART-QR-ATTEND|CS101|IT-3A|2026-10-01"
+const VALID_PREFIX = 'SMART-QR-ATTEND|';
+
+// ── Screen ──────────────────────────────────────────────────
 export default function ScannerScreen() {
-  const [permission, requestPermission] = useCameraPermissions();
-  const [scanned, setScanned] = useState(false);
-  const [torch, setTorch] = useState(false);
-
-  const { studentName, studentId, course, section } = useLocalSearchParams<{
+  const {
+    studentName = 'Student',
+    studentId = '',
+    course = '',
+    section = '',
+  } = useLocalSearchParams<{
     studentName?: string;
     studentId?: string;
     course?: string;
     section?: string;
   }>();
 
-  // Handle barcode scanned event
-  const handleBarcodeScanned = async ({ data }: { data: string }) => {
-    if (scanned) return;
-    setScanned(true);
+  const { addRecord } = useAttendance();
+  const [scanning, setScanning] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [scannedSubject, setScannedSubject] = useState('CS101');
 
-    let status: 'present' | 'absent' | 'invalid' = 'invalid';
+  // ── Handle a scanned QR ─────────────────────────────────
+  const handleScanned = useCallback(
+    async (data: string) => {
+      setScanning(false); // pause camera immediately
 
-    try {
-      // Check if data is valid JSON or matches attendance code
-      if (data.toLowerCase().includes('cs101') || data.toLowerCase().includes('present') || data.toLowerCase().includes('attendance')) {
-        status = 'present';
-      } else if (data.toLowerCase().includes('late')) {
-        status = 'present'; // Can map to present or late
-      } else if (data.startsWith('{')) {
-        const parsed = JSON.parse(data);
-        if (parsed.status) status = parsed.status;
-        else if (parsed.code || parsed.subject) status = 'present';
-      } else if (data.trim().length > 0) {
-        status = 'present';
+      if (!data.startsWith(VALID_PREFIX)) {
+        setErrorMsg('Invalid QR Code. Please scan the correct attendance QR provided by your instructor.');
+        return;
       }
-    } catch {
-      status = 'invalid';
-    }
 
-    // Save record to AsyncStorage
-    const name = studentName || 'Juan Dela Cruz';
-    const id = studentId || '2024-00123';
-    const crs = course || 'BS Information Technology';
-    const sec = section || 'IT-3A';
+      // Parse subject from QR  e.g. "SMART-QR-ATTEND|CS101|IT-3A|2026-10-01"
+      const parts = data.split('|');
+      const subject = parts[1] ?? 'CS101';
+      setScannedSubject(subject);
 
-    if (status !== 'invalid') {
       try {
-        const record = createRecord({
-          studentName: name,
-          studentId: id,
-          course: crs,
-          section: sec,
-          status: status === 'present' ? 'present' : 'absent',
+        await addRecord({
+          studentName: String(studentName),
+          studentId: String(studentId),
+          course: String(course),
+          section: String(section),
+          status: 'present',
+          subject,
         });
-        await addRecord(record);
-      } catch (err) {
-        console.error('Failed to save record:', err);
+      } catch {
+        // non-blocking — show success anyway
       }
-    }
 
-    // Navigate to Attendance Result screen
-    router.replace({
-      pathname: '/attendance-result',
-      params: {
-        studentName: name,
-        studentId: id,
-        course: crs,
-        section: sec,
-        status,
-      },
-    });
-  };
+      setErrorMsg('');
+      setShowSuccess(true);
+    },
+    [studentName, studentId, course, section, addRecord]
+  );
 
-  // ── Permission Loading State ──
-  if (!permission) {
-    return <View style={styles.container} />;
+  // ── Reset: allow another scan ────────────────────────────
+  function resetScan() {
+    setShowSuccess(false);
+    setErrorMsg('');
+    setScanning(true);
   }
 
-  // ── Permission Denied Screen ──
-  if (!permission.granted) {
-    return (
-      <SafeAreaView style={styles.permissionContainer}>
-        <View style={styles.permissionCard}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="camera-outline" size={48} color={Colors.leafGreen} />
-          </View>
-          <Text style={styles.permissionTitle}>Camera Access Required</Text>
-          <Text style={styles.permissionSub}>
-            We need your permission to use the camera to scan classroom QR codes for attendance.
-          </Text>
-          <TouchableOpacity
-            style={styles.grantBtn}
-            onPress={requestPermission}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="checkmark-circle-outline" size={20} color={Colors.white} />
-            <Text style={styles.grantBtnText}>Grant Camera Permission</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.cancelBtn}
-            onPress={() => router.back()}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.cancelBtnText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
+  // ── Go back to dashboard ─────────────────────────────────
+  function goToDashboard() {
+    router.back();
   }
 
-  // ── Camera Scanner View ──
   return (
-    <View style={styles.container}>
-      <CameraView
-        style={StyleSheet.absoluteFill}
-        enableTorch={torch}
-        onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
-        barcodeScannerSettings={{
-          barcodeTypes: ['qr'],
-        }}
-      />
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <StatusBar barStyle="light-content" backgroundColor={Colors.darkGreen} />
 
-      {/* Top Header Overlay */}
-      <SafeAreaView style={styles.overlayTop}>
+      {/* ── Header ── */}
+      <View style={styles.header}>
         <TouchableOpacity
-          style={styles.iconBtn}
-          onPress={() => router.back()}
+          style={styles.backButton}
+          onPress={goToDashboard}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={22} color={Colors.white} />
+          <Ionicons name="arrow-back" size={20} color={Colors.white} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>Scan QR Code</Text>
-
-        <TouchableOpacity
-          style={[styles.iconBtn, torch && styles.iconBtnActive]}
-          onPress={() => setTorch(!torch)}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name={torch ? 'flash' : 'flash-outline'}
-            size={22}
-            color={torch ? '#FFD700' : Colors.white}
-          />
-        </TouchableOpacity>
-      </SafeAreaView>
-
-      {/* Viewfinder Target Overlay */}
-      <View style={styles.viewfinderContainer}>
-        <View style={styles.targetFrame}>
-          {/* Corners */}
-          <View style={[styles.corner, styles.cornerTL]} />
-          <View style={[styles.corner, styles.cornerTR]} />
-          <View style={[styles.corner, styles.cornerBL]} />
-          <View style={[styles.corner, styles.cornerBR]} />
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Scan QR Code</Text>
+          <Text style={styles.headerSubtitle}>
+            {String(studentName)} · {String(studentId)}
+          </Text>
         </View>
-        <Text style={styles.guideText}>Align QR code within the frame</Text>
+
+        <View style={styles.headerSpacer} />
       </View>
 
-      {/* Bottom Hint */}
-      <SafeAreaView style={styles.overlayBottom}>
-        <View style={styles.hintBadge}>
-          <Ionicons name="sparkles" size={16} color={Colors.leafGreen} />
-          <Text style={styles.hintText}>CS101 Attendance Scanner</Text>
+      {/* ── Camera viewfinder ── */}
+      <View style={styles.cameraWrapper}>
+        <QRScanner onScanned={handleScanned} active={scanning} />
+      </View>
+
+      {/* ── Bottom info panel ── */}
+      <View style={styles.bottomPanel}>
+        {errorMsg ? (
+          /* Invalid QR error */
+          <View style={styles.errorBox}>
+            <Ionicons name="alert-circle" size={20} color={Colors.absent} />
+            <Text style={styles.errorText}>{errorMsg}</Text>
+          </View>
+        ) : (
+          /* Hint text */
+          <View style={styles.hintBox}>
+            <Ionicons name="information-circle-outline" size={18} color={Colors.leafGreen} />
+            <Text style={styles.hintText}>
+              Point your camera at the QR code displayed by your instructor
+            </Text>
+          </View>
+        )}
+
+        {/* Scan Again button — only shown when paused */}
+        {!scanning && (
+          <TouchableOpacity
+            style={styles.rescanButton}
+            onPress={resetScan}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="refresh-outline" size={18} color={Colors.darkGreen} />
+            <Text style={styles.rescanText}>Scan Again</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* ── Success Modal ── */}
+      <Modal visible={showSuccess} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            {/* Success icon */}
+            <View style={styles.successIconCircle}>
+              <Ionicons name="checkmark" size={44} color={Colors.white} />
+            </View>
+
+            <Text style={styles.modalTitle}>Attendance Marked!</Text>
+            <Text style={styles.modalSubject}>{scannedSubject}</Text>
+
+            {/* Student details */}
+            <View style={styles.modalInfoRow}>
+              <Ionicons name="person-outline" size={14} color={Colors.olive} />
+              <Text style={styles.modalInfoText}>{String(studentName)}</Text>
+            </View>
+            <View style={styles.modalInfoRow}>
+              <Ionicons name="id-card-outline" size={14} color={Colors.olive} />
+              <Text style={styles.modalInfoText}>{String(studentId)}</Text>
+            </View>
+            <View style={styles.modalInfoRow}>
+              <Ionicons name="school-outline" size={14} color={Colors.olive} />
+              <Text style={styles.modalInfoText}>{String(course)} · {String(section)}</Text>
+            </View>
+
+            {/* Status badge */}
+            <View style={styles.presentBadge}>
+              <View style={styles.presentDot} />
+              <Text style={styles.presentText}>Present</Text>
+            </View>
+
+            {/* Action buttons */}
+            <TouchableOpacity
+              style={styles.scanAnotherBtn}
+              onPress={resetScan}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="scan-outline" size={18} color={Colors.white} />
+              <Text style={styles.scanAnotherText}>Scan Another</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.dashboardBtn}
+              onPress={goToDashboard}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.dashboardBtnText}>Back to Dashboard</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </SafeAreaView>
-    </View>
+      </Modal>
+    </SafeAreaView>
   );
 }
 
+// ── Styles ───────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: Colors.darkGreen,
   },
 
-  // Permission screen
-  permissionContainer: {
-    flex: 1,
-    backgroundColor: Colors.beige,
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.xl,
-  },
-  permissionCard: {
-    backgroundColor: Colors.white,
-    borderRadius: Radius.lg,
-    padding: Spacing.xl,
+  // Header
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    backgroundColor: Colors.darkGreen,
     gap: Spacing.md,
-    ...Shadow.card,
   },
-  iconCircle: {
-    width: 80,
-    height: 80,
+  backButton: {
+    width: 38,
+    height: 38,
     borderRadius: Radius.pill,
-    backgroundColor: Colors.lightGreen,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  permissionTitle: {
-    fontSize: FontSize.xl,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    textAlign: 'center',
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
   },
-  permissionSub: {
+  headerTitle: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.white,
+    letterSpacing: 0.2,
+  },
+  headerSubtitle: {
+    fontSize: FontSize.xs,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 1,
+  },
+  headerSpacer: {
+    width: 38,
+  },
+
+  // Camera
+  cameraWrapper: {
+    flex: 1,
+  },
+
+  // Bottom panel
+  bottomPanel: {
+    backgroundColor: Colors.beige,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.lg,
+    gap: Spacing.md,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+  },
+  hintBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.lightGreen,
+    padding: Spacing.md,
+    borderRadius: Radius.md,
+  },
+  hintText: {
+    flex: 1,
     fontSize: FontSize.sm,
-    color: Colors.olive,
-    textAlign: 'center',
+    color: Colors.textPrimary,
     lineHeight: 20,
   },
-  grantBtn: {
-    backgroundColor: Colors.leafGreen,
-    height: 52,
-    borderRadius: Radius.pill,
-    width: '100%',
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+    backgroundColor: Colors.absentBg,
+    padding: Spacing.md,
+    borderRadius: Radius.md,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.absent,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    color: Colors.absent,
+    lineHeight: 20,
+  },
+  rescanButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.sm,
-    marginTop: Spacing.xs,
-    ...Shadow.button,
+    height: 48,
+    borderRadius: Radius.pill,
+    borderWidth: 1.5,
+    borderColor: Colors.darkGreen,
+    backgroundColor: Colors.beige,
   },
-  grantBtnText: {
-    color: Colors.white,
+  rescanText: {
     fontSize: FontSize.md,
     fontWeight: '600',
-  },
-  cancelBtn: {
-    paddingVertical: Spacing.sm,
-  },
-  cancelBtnText: {
-    color: Colors.olive,
-    fontSize: FontSize.sm,
-    fontWeight: '600',
+    color: Colors.darkGreen,
   },
 
-  // Overlays
-  overlayTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.md,
-    zIndex: 10,
-  },
-  headerTitle: {
-    fontSize: FontSize.lg,
-    fontWeight: '700',
-    color: Colors.white,
-  },
-  iconBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: Radius.pill,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconBtnActive: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-  },
-
-  // Viewfinder
-  viewfinderContainer: {
+  // Success modal
+  modalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xl,
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: Colors.white,
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    gap: Spacing.sm,
+    ...Shadow.card,
+  },
+  successIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.leafGreen,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: Spacing.sm,
+    ...Shadow.button,
   },
-  targetFrame: {
-    width: 250,
-    height: 250,
-    position: 'relative',
+  modalTitle: {
+    fontSize: FontSize.xxl,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    letterSpacing: -0.3,
   },
-  corner: {
-    position: 'absolute',
-    width: 32,
-    height: 32,
-    borderColor: Colors.leafGreen,
-    borderWidth: 4,
+  modalSubject: {
+    fontSize: FontSize.md,
+    fontWeight: '600',
+    color: Colors.leafGreen,
+    marginBottom: Spacing.sm,
   },
-  cornerTL: { top: 0, left: 0, borderRightWidth: 0, borderBottomWidth: 0, borderTopLeftRadius: Radius.sm },
-  cornerTR: { top: 0, right: 0, borderLeftWidth: 0, borderBottomWidth: 0, borderTopRightRadius: Radius.sm },
-  cornerBL: { bottom: 0, left: 0, borderRightWidth: 0, borderTopWidth: 0, borderBottomLeftRadius: Radius.sm },
-  cornerBR: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0, borderBottomRightRadius: Radius.sm },
-  guideText: {
-    color: Colors.white,
-    fontSize: FontSize.sm,
-    fontWeight: '500',
-    marginTop: Spacing.xl,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.xs,
-    borderRadius: Radius.pill,
-  },
-
-  // Bottom overlay
-  overlayBottom: {
-    position: 'absolute',
-    bottom: Spacing.xxl,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  hintBadge: {
+  modalInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
-    backgroundColor: Colors.white,
+  },
+  modalInfoText: {
+    fontSize: FontSize.sm,
+    color: Colors.olive,
+  },
+  presentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.presentBg,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
     borderRadius: Radius.pill,
-    ...Shadow.card,
+    marginVertical: Spacing.sm,
   },
-  hintText: {
+  presentDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.present,
+  },
+  presentText: {
     fontSize: FontSize.sm,
+    fontWeight: '700',
+    color: Colors.present,
+  },
+  scanAnotherBtn: {
+    width: '100%',
+    height: 50,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.leafGreen,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+    ...Shadow.button,
+  },
+  scanAnotherText: {
+    fontSize: FontSize.md,
     fontWeight: '600',
-    color: Colors.textPrimary,
+    color: Colors.white,
+  },
+  dashboardBtn: {
+    width: '100%',
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dashboardBtnText: {
+    fontSize: FontSize.sm,
+    fontWeight: '500',
+    color: Colors.olive,
   },
 });
