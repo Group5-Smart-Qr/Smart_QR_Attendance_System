@@ -182,7 +182,7 @@ export default function LoginScreen() {
   async function handleSubmit() {
     setError('');
 
-    // ── Empty field validation ───────────────────────────────
+    // Step 1 — Empty field checks
     if (!studentId.trim()) {
       setError('Please enter your Student ID #.');
       shake();
@@ -199,10 +199,11 @@ export default function LoginScreen() {
       return;
     }
 
+    // Step 2 — Show loading spinner on button
     setIsLoading(true);
 
     if (mode === 'login') {
-      // ── Real Login: validates account exists & password correct ─
+      // Step 3A — Call real login (checks AsyncStorage for account + password)
       const result = await loginStudent({
         studentId: studentId.trim(),
         password: password.trim(),
@@ -211,12 +212,13 @@ export default function LoginScreen() {
       setIsLoading(false);
 
       if (!result.success) {
+        // Account not found OR wrong password — show error, stay on screen
         setError(result.error || 'Login failed. Please try again.');
         shake();
         return;
       }
 
-      // Login success — go to dashboard with saved profile data
+      // Login success — go to dashboard with real saved profile data
       const profile = result.profile!;
       router.replace({
         pathname: '/dashboard',
@@ -229,7 +231,7 @@ export default function LoginScreen() {
       });
 
     } else {
-      // ── Real Register: creates new account (blocks duplicate IDs) ─
+      // Step 3B — Call real register (creates account, blocks duplicate IDs)
       const result = await registerStudent({
         studentId: studentId.trim(),
         password: password.trim(),
@@ -241,12 +243,13 @@ export default function LoginScreen() {
       setIsLoading(false);
 
       if (!result.success) {
+        // Duplicate ID or other error — show error, stay on screen
         setError(result.error || 'Registration failed. Please try again.');
         shake();
         return;
       }
 
-      // Registration success — go to dashboard
+      // Register success — go to dashboard
       const profile = result.profile!;
       router.replace({
         pathname: '/dashboard',
