@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   KeyboardAvoidingView,
   Platform,
@@ -22,6 +23,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors, FontSize, Radius, Shadow, Spacing } from '@/constants/theme';
+import { loginStudent, registerStudent } from '@/services/auth-storage';
 
 // ── Course & Section options ────────────────────────────────
 const COURSES = [
@@ -162,8 +164,9 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Error & Animation
+  // Error, Loading & Animation
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   function shake() {
@@ -176,57 +179,82 @@ export default function LoginScreen() {
   }
 
   // ── Handle Login / Register Submission ───────────────────
-  function handleSubmit() {
+  async function handleSubmit() {
     setError('');
 
+    // ── Empty field validation ───────────────────────────────
+    if (!studentId.trim()) {
+      setError('Please enter your Student ID #.');
+      shake();
+      return;
+    }
+    if (!password.trim()) {
+      setError(mode === 'login' ? 'Please enter your password.' : 'Please create a password.');
+      shake();
+      return;
+    }
+    if (mode === 'register' && password !== confirmPassword) {
+      setError('Passwords do not match.');
+      shake();
+      return;
+    }
+
+    setIsLoading(true);
+
     if (mode === 'login') {
-      if (!studentId.trim()) {
-        setError('Please enter your Student ID #.');
-        shake();
-        return;
-      }
-      if (!password.trim()) {
-        setError('Please enter your password.');
+      // ── Real Login: validates account exists & password correct ─
+      const result = await loginStudent({
+        studentId: studentId.trim(),
+        password: password.trim(),
+      });
+
+      setIsLoading(false);
+
+      if (!result.success) {
+        setError(result.error || 'Login failed. Please try again.');
         shake();
         return;
       }
 
-      // Successful Login
+      // Login success — go to dashboard with saved profile data
+      const profile = result.profile!;
       router.replace({
         pathname: '/dashboard',
         params: {
-          studentId: studentId.trim(),
-          studentName: studentName.trim() || `Student ${studentId.trim()}`,
-          course,
-          section,
+          studentId: profile.studentId,
+          studentName: profile.studentName,
+          course: profile.course,
+          section: profile.section,
         },
       });
+
     } else {
-      // Registration Mode
-      if (!studentId.trim()) {
-        setError('Please enter a Student ID #.');
-        shake();
-        return;
-      }
-      if (!password.trim()) {
-        setError('Please create a password.');
-        shake();
-        return;
-      }
-      if (password !== confirmPassword) {
-        setError('Passwords do not match.');
+      // ── Real Register: creates new account (blocks duplicate IDs) ─
+      const result = await registerStudent({
+        studentId: studentId.trim(),
+        password: password.trim(),
+        studentName: studentName.trim() || `Student ${studentId.trim()}`,
+        course,
+        section,
+      });
+
+      setIsLoading(false);
+
+      if (!result.success) {
+        setError(result.error || 'Registration failed. Please try again.');
         shake();
         return;
       }
 
-      // Successful Registration
+      // Registration success — go to dashboard
+      const profile = result.profile!;
       router.replace({
         pathname: '/dashboard',
         params: {
-          studentId: studentId.trim(),
-          studentName: studentName.trim() || `Student ${studentId.trim()}`,
-          course,
-          section,
+          studentId: profile.studentId,
+          studentName: profile.studentName,
+          course: profile.course,
+          section: profile.section,
         },
       });
     }
@@ -414,17 +442,24 @@ export default function LoginScreen() {
 
           {/* Action Button */}
           <TouchableOpacity
-            style={styles.btnPrimary}
+            style={[styles.btnPrimary, isLoading && { opacity: 0.7 }]}
             onPress={handleSubmit}
             activeOpacity={0.85}
+            disabled={isLoading}
           >
-            <Ionicons
-              name={mode === 'login' ? 'arrow-forward-circle-outline' : 'checkmark-circle-outline'}
-              size={20}
-              color={Colors.white}
-            />
+            {isLoading ? (
+              <ActivityIndicator size="small" color={Colors.white} />
+            ) : (
+              <Ionicons
+                name={mode === 'login' ? 'arrow-forward-circle-outline' : 'checkmark-circle-outline'}
+                size={20}
+                color={Colors.white}
+              />
+            )}
             <Text style={styles.btnPrimaryText}>
-              {mode === 'login' ? 'Log In to Dashboard' : 'Create Account & Continue'}
+              {isLoading
+                ? (mode === 'login' ? 'Logging in...' : 'Creating account...')
+                : (mode === 'login' ? 'Log In to Dashboard' : 'Create Account & Continue')}
             </Text>
           </TouchableOpacity>
 
